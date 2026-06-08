@@ -124,6 +124,10 @@ class DAQWorker(QObject):
             initial_delay_samples = int(self.initial_trigger_delay * self.sampling_rate)
             trigger_samples = int(self.trigger_duration * self.sampling_rate)
             interval_samples = int(self.inter_trigger_interval * self.sampling_rate)
+            if trigger_samples < 1:
+                raise ValueError(
+                    "Classic mode: trigger duration is too short for the selected sampling rate."
+                )
             samples_per_cycle = trigger_samples + interval_samples
 
             sig_cycle = np.zeros(samples_per_cycle, dtype=np.float64)

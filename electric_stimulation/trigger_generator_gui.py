@@ -123,10 +123,10 @@ class TriggerGeneratorWindow(QMainWindow):
         self.classic_pulse_group = QGroupBox("Pulses (classic mode)")
         classic_form = QFormLayout(self.classic_pulse_group)
         self.trigger_duration_spin = QDoubleSpinBox()
-        self.trigger_duration_spin.setRange(0.001, 60)
+        self.trigger_duration_spin.setRange(1e-6, 60)
         self.trigger_duration_spin.setValue(0.2)
         self.trigger_duration_spin.setSuffix(" s")
-        self.trigger_duration_spin.setDecimals(3)
+        self.trigger_duration_spin.setDecimals(6)
         classic_form.addRow("Trigger duration (3 V):", self.trigger_duration_spin)
         self.inter_trigger_spin = QDoubleSpinBox()
         self.inter_trigger_spin.setRange(0, 3600)
@@ -390,6 +390,16 @@ class TriggerGeneratorWindow(QMainWindow):
         infinite = self.infinite_check.isChecked()
         nb_triggers = self.nb_triggers_spin.value()
         mode = self.mode_combo.currentData() or "classic"
+
+        if mode == "classic":
+            trigger_samples = int(trigger_duration * sampling_rate)
+            if trigger_samples < 1:
+                QMessageBox.warning(
+                    self, "Classic settings",
+                    "Trigger duration is too short for the selected sampling rate. "
+                    "Increase trigger duration or sampling rate.",
+                )
+                return
 
         if mode == "led":
             train_dur_s = self.led_train_duration_spin.value()
