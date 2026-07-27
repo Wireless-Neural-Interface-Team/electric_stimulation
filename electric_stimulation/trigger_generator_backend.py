@@ -21,7 +21,7 @@ except ImportError:
 try:
     import PyDAQmx as nidaq
     DAQ_AVAILABLE = True
-except ImportError:
+except Exception:
     DAQ_AVAILABLE = False
     nidaq = None
 
@@ -113,7 +113,7 @@ class DAQWorker(QObject):
         led_completed_externally = False
         try:
             if not DAQ_AVAILABLE:
-                self.error.emit("PyDAQmx is not installed.")
+                self.error.emit("PyDAQmx/NI-DAQmx is unavailable in this environment.")
                 return
 
             if self.mode == "led":
