@@ -1,36 +1,42 @@
 # -*- coding: utf-8 -*-
-"""
-Paths and JSON payload for saved experiment parameters (no PyQt dependency).
-"""
+"""Paths and JSON I/O for saved experiment parameters."""
+
+from __future__ import annotations
 
 import json
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 
-def app_dir():
-    """Directory next to frozen exe, or package directory when running from source."""
+def app_dir() -> Path:
     if getattr(sys, "frozen", False):
         return Path(sys.executable).parent
     return Path(__file__).resolve().parent
 
 
-def experiences_dir():
+def experiences_dir() -> Path:
     return app_dir() / "experiences"
 
 
-def build_experiment_record(worker_params, duration_seconds, start_time, end_time=None):
-    """Flat dict for trigger_generator_*.json (matches GUI load/save keys)."""
+def build_experiment_record(
+    worker_params: Dict[str, Any],
+    duration_seconds: float,
+    start_time: datetime,
+    end_time: Optional[datetime] = None,
+) -> Dict[str, Any]:
     if end_time is None:
         end_time = datetime.now()
     p = worker_params
     return {
-        "device": p.get("device", "Dev2"),
+        "device": p.get("device", "Dev1"),
         "channel": p.get("channel", "ao0"),
         "sampling_rate": p.get("sampling_rate", 1000),
-        "trigger_duration": p.get("trigger", 0.2),
-        "inter_trigger_interval": p.get("interval", 20),
+        "trigger_duration": p.get("trigger", p.get("trigger_duration", 0.2)),
+        "inter_trigger_interval": p.get(
+            "interval", p.get("inter_trigger_interval", 20)
+        ),
         "initial_trigger_delay": p.get("initial_trigger_delay", 5),
         "infinite": p.get("infinite", True),
         "nb_triggers": p.get("nb_triggers", 5),
@@ -48,8 +54,13 @@ def build_experiment_record(worker_params, duration_seconds, start_time, end_tim
     }
 
 
-def save_experiment_record(record, filepath):
+def save_experiment_record(record: Dict[str, Any], filepath) -> None:
     filepath = Path(filepath)
     filepath.parent.mkdir(parents=True, exist_ok=True)
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(record, f, indent=2, ensure_ascii=False)
+
+
+def load_experiment_file(filepath) -> Dict[str, Any]:
+    with open(filepath, "r", encoding="utf-8") as f:
+        return json.load(f)

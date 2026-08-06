@@ -1,22 +1,18 @@
 """
-Script to build a standalone executable for Trigger Generator.
+Build a standalone Trigger Generator executable.
 
 Usage:
-    python build_exe.py
-    # or: python -m build_exe (from project root)
-
-Prerequisites:
-    pip install -r requirements.txt pyinstaller
-
-The executable will be generated in dist/ (in the current directory).
+    python -m electric_stimulation.build_exe
+    # or: trigger-generator-build
 """
 
 import subprocess
 import sys
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+PACKAGE_ROOT = SCRIPT_DIR.parent
 
 
 def main():
@@ -28,31 +24,60 @@ def main():
         try:
             exe_path.unlink()
         except PermissionError:
-            print("ERROR: The executable is locked (running or in use by another program).")
+            print("ERROR: The executable is locked (running or in use).")
             print("Close Trigger Generator and try again.")
             sys.exit(1)
 
     launcher = SCRIPT_DIR / "run_trigger_generator_gui.py"
+    hidden = [
+        "electric_stimulation",
+        "electric_stimulation.gui",
+        "electric_stimulation.gui.app",
+        "electric_stimulation.gui.main_window",
+        "electric_stimulation.gui.style",
+        "electric_stimulation.gui.phase_status",
+        "electric_stimulation.daq",
+        "electric_stimulation.daq.tasks",
+        "electric_stimulation.daq.worker",
+        "electric_stimulation.waveforms",
+        "electric_stimulation.waveforms.classic",
+        "electric_stimulation.waveforms.led",
+        "electric_stimulation.models",
+        "electric_stimulation.timing",
+        "electric_stimulation.experiment_io",
+        "electric_stimulation.trigger_generator_gui",
+        "electric_stimulation.trigger_generator_backend",
+        "electric_stimulation.led_pattern",
+        "PyQt5",
+        "PyQt5.QtCore",
+        "PyQt5.QtGui",
+        "PyQt5.QtWidgets",
+        "numpy",
+        "PyDAQmx",
+    ]
     with tempfile.TemporaryDirectory() as tmp:
         cmd = [
-            sys.executable, "-m", "PyInstaller",
+            sys.executable,
+            "-m",
+            "PyInstaller",
             "--name=TriggerGenerator",
             "--windowed",
             "--onefile",
             "--clean",
-            "--distpath", str(output_dir),
-            "--specpath", tmp,
-            "--workpath", tmp,
-            "--hidden-import=PyQt5",
-            "--hidden-import=PyQt5.QtCore",
-            "--hidden-import=PyQt5.QtGui",
-            "--hidden-import=PyQt5.QtWidgets",
-            "--hidden-import=numpy",
-            "--hidden-import=PyDAQmx",
-            str(launcher.resolve()),
+            "--distpath",
+            str(output_dir),
+            "--specpath",
+            tmp,
+            "--workpath",
+            tmp,
+            "--paths",
+            str(PACKAGE_ROOT),
         ]
+        for mod in hidden:
+            cmd.extend(["--hidden-import", mod])
+        cmd.append(str(launcher.resolve()))
         subprocess.run(cmd, check=True, cwd=Path.cwd())
-    print(f"\n✓ Executable created: {exe_path}")
+    print(f"\nOK: Executable created: {exe_path}")
 
 
 if __name__ == "__main__":

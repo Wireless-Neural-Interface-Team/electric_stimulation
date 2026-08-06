@@ -1,29 +1,30 @@
 # -*- coding: utf-8 -*-
 """
-Electric Stimulation - NI-DAQmx trigger generator for electrical stimulation.
-
-Modules:
-- trigger_generator_backend: DAQWorker, build_channel_path, re-exports LED helpers
-- led_pattern: build_led_pattern, led_pattern_dimensions (NumPy only)
-- experiment_io: JSON record builders for saved runs
-- trigger_generator_gui: TriggerGeneratorWindow, main()
+Electric Stimulation — NI-DAQmx trigger generator for electrical stimulation.
 """
 
-from .led_pattern import build_led_pattern, led_pattern_dimensions
-from .trigger_generator_backend import (
+from .daq import (
     DAQ_AVAILABLE,
     DAQWorker,
     build_channel_path,
+    default_daq_device,
+    list_daq_devices,
 )
-from .trigger_generator_gui import TriggerGeneratorWindow, main
+from .gui import TriggerGeneratorWindow, main
+from .models import GenerationConfig
+from .waveforms import build_classic_cycle, build_led_pattern, led_pattern_dimensions
 
 __all__ = [
     "DAQ_AVAILABLE",
     "DAQWorker",
+    "GenerationConfig",
     "TriggerGeneratorWindow",
     "build_channel_path",
+    "build_classic_cycle",
     "build_led_pattern",
+    "default_daq_device",
     "led_pattern_dimensions",
+    "list_daq_devices",
     "main",
 ]
-__version__ = "0.1.0"
+__version__ = "0.4.0"

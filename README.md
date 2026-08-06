@@ -1,28 +1,52 @@
 # Electric stimulation
-GUI to generate and modify a electric trigger send to a national instrument wich converts this to a electric stimulation signal designed for neurostimulation with a micro-electrode array.
 
-**Multi-platform:** Windows, macOS, Linux.
+GUI to generate electrical trigger signals via **National Instruments NI-DAQmx** (micro-electrode array neurostimulation).
 
-The library is available on PyPI.
+**Platforms:** Windows, macOS, Linux · **Python:** ≥ 3.8 · **PyPI:** `electric-stimulation`
 
-## Installation (PyPI)
-1. Open terminal as administrator
-2. Run on terminal [uv](https://docs.astral.sh/uv/): `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux) or `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"` (Windows)
-3. Install virtual environment : run in terminal `uv venv si_env --python 3.12`
-4. Restart your terminal
-5. Allow script execution : run in terminal `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned`
-6. Activate virtual environment: run in terminal `source si_env/bin/activate` (macOS/Linux) or `si_env\Scripts\activate` (Windows)
-7. Install library : run in terminal `uv pip install electric-stimulation`
+## Architecture (v0.4)
 
-## Run application
-1. Allow script execution : run in terminal `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned`
-2. Activate virtual environment: run in terminal `source si_env/bin/activate` (macOS/Linux) or `si_env\Scripts\activate` (Windows)
-3. Run in terminal `trigger-generator`
+```
+electric_stimulation/
+  models.py          GenerationConfig (typed protocol parameters)
+  timing.py          sample-clock quantization
+  waveforms/         classic + LED buffers (NumPy)
+  daq/               NI-DAQmx devices, tasks, QThread worker
+  gui/               PyQt5 application (Fusion + instrument theme)
+  experiment_io.py   JSON save/load next to the exe
+```
 
-## Build a standalone executable (Windows: `.exe`, macOS/Linux: binary):
-1. Allow script execution : run in terminal `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned`
-2. Activate virtual environment: run in terminal `source si_env/bin/activate` (macOS/Linux) or `si_env\Scripts\activate` (Windows) 
-3. Using the command-line terminal, navigate to the folder where you want the .exe file to be located.
-4. Build the executable in currentfolder/dist : run in terminal `trigger-generator-build`
+Legacy modules (`trigger_generator_gui`, `trigger_generator_backend`, `led_pattern`) remain as thin compatibility shims.
 
-The executable will be in `dist/` (in the current directory).
+## Install
+
+```bash
+uv venv si_env --python 3.12
+# Windows: si_env\Scripts\activate
+# macOS/Linux: source si_env/bin/activate
+uv pip install electric-stimulation
+# or from repo: uv pip install -e ".[build]"
+```
+
+Requires [NI-DAQmx](https://www.ni.com/en/support/downloads/drivers/download.ni-daqmx.html) on the machine.
+
+## Run
+
+```bash
+trigger-generator
+# or
+python -m electric_stimulation
+```
+
+## Build standalone executable
+
+```bash
+trigger-generator-build
+# → dist/TriggerGenerator.exe (Windows) or dist/TriggerGenerator
+```
+
+## Notes
+
+- Only **one** application instance at a time (NI AO cannot be shared).
+- Timings are quantized to the AO sample clock (`round(seconds × fs)`).
+- Infinite mode uses hardware-timed continuous regeneration; Stop aborts the task immediately.
