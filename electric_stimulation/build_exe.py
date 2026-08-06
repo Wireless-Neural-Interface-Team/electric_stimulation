@@ -1,11 +1,14 @@
 """
-Build a standalone Trigger Generator executable.
+Build Trigger Generator GUI executable (onedir).
+
+DAQ generation is launched via a real Python interpreter when available
+(TG_DAQ_PYTHON / si_env), because PyInstaller freezes DAQmxCreateTask.
 
 Usage:
     python -m electric_stimulation.build_exe
-    # or: trigger-generator-build
 """
 
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -17,18 +20,25 @@ PACKAGE_ROOT = SCRIPT_DIR.parent
 
 def main():
     output_dir = Path.cwd() / "dist"
+    app_dir = output_dir / "TriggerGenerator"
     exe_name = "TriggerGenerator.exe" if sys.platform == "win32" else "TriggerGenerator"
-    exe_path = output_dir / exe_name
 
-    if exe_path.exists():
+    legacy_onefile = output_dir / exe_name
+    if legacy_onefile.exists():
         try:
-            exe_path.unlink()
+            legacy_onefile.unlink()
         except PermissionError:
-            print("ERROR: The executable is locked (running or in use).")
+            print("ERROR: dist/TriggerGenerator.exe is locked (still running).")
+            sys.exit(1)
+    if app_dir.exists():
+        try:
+            shutil.rmtree(app_dir)
+        except PermissionError:
+            print("ERROR: dist/TriggerGenerator/ is locked (still running).")
             print("Close Trigger Generator and try again.")
             sys.exit(1)
 
-    launcher = SCRIPT_DIR / "run_trigger_generator_gui.py"
+    gui_launcher = SCRIPT_DIR / "run_trigger_generator_gui.py"
     hidden = [
         "electric_stimulation",
         "electric_stimulation.gui",
@@ -38,7 +48,11 @@ def main():
         "electric_stimulation.gui.phase_status",
         "electric_stimulation.daq",
         "electric_stimulation.daq.tasks",
+        "electric_stimulation.daq.devices",
+        "electric_stimulation.daq.nicaiu",
         "electric_stimulation.daq.worker",
+        "electric_stimulation.daq.session_runner",
+        "electric_stimulation.daq.cli_session",
         "electric_stimulation.waveforms",
         "electric_stimulation.waveforms.classic",
         "electric_stimulation.waveforms.led",
@@ -53,8 +67,8 @@ def main():
         "PyQt5.QtGui",
         "PyQt5.QtWidgets",
         "numpy",
-        "PyDAQmx",
     ]
+
     with tempfile.TemporaryDirectory() as tmp:
         cmd = [
             sys.executable,
@@ -62,7 +76,7 @@ def main():
             "PyInstaller",
             "--name=TriggerGenerator",
             "--windowed",
-            "--onefile",
+            "--onedir",
             "--clean",
             "--distpath",
             str(output_dir),
@@ -75,9 +89,20 @@ def main():
         ]
         for mod in hidden:
             cmd.extend(["--hidden-import", mod])
-        cmd.append(str(launcher.resolve()))
+        cmd.append(str(gui_launcher.resolve()))
         subprocess.run(cmd, check=True, cwd=Path.cwd())
-    print(f"\nOK: Executable created: {exe_path}")
+
+    # Helper script so the GUI can find the DAQ Python easily on this machine.
+    helper = app_dir / "daq_python.txt"
+    si_python = PACKAGE_ROOT / "si_env" / "Scripts" / "python.exe"
+    if si_python.is_file():
+        helper.write_text(str(si_python.resolve()), encoding="utf-8")
+
+    print(f"\nOK: Executable created: {app_dir / exe_name}")
+    if helper.exists():
+        print(f"OK: DAQ python hint: {helper}")
+    print("Keep the whole TriggerGenerator folder together.")
+    print("DAQ uses a real Python (si_env) — required because NI CreateTask hangs in frozen exes.")
 
 
 if __name__ == "__main__":

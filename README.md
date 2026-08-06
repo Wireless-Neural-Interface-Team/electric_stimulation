@@ -42,7 +42,8 @@ python -m electric_stimulation
 
 ```bash
 trigger-generator-build
-# → dist/TriggerGenerator.exe (Windows) or dist/TriggerGenerator
+# → dist/TriggerGenerator/TriggerGenerator.exe (keep the whole folder)
+# DAQ runs via si_env Python (daq_python.txt) — NI CreateTask hangs inside frozen exes.
 ```
 
 ## Notes

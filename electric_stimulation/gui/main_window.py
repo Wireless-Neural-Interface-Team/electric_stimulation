@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from PyQt5.QtCore import Qt, QThread, QTimer
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -43,11 +43,11 @@ class TriggerGeneratorWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.worker = None
-        self.worker_thread = None
         self.state_timer = None
         self.state_start_time = None
         self.worker_params = None
         self.experiment_start_time = None
+        self._session_active = False
         self._build_ui()
         self._refresh_devices()
         self.load_params(silent=True)
@@ -325,7 +325,7 @@ class TriggerGeneratorWindow(QMainWindow):
         self.nb_spin.setEnabled(enabled and not self.infinite_check.isChecked())
 
     def start_generation(self):
-        if self.worker_thread and self.worker_thread.isRunning():
+        if self.worker is not None and self.worker.isRunning():
             return
         cfg = self._collect_config()
         try:
@@ -355,25 +355,27 @@ class TriggerGeneratorWindow(QMainWindow):
         self.start_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
         self._set_controls_enabled(False)
+        self._session_active = True
 
+        # Child process owns NI on its main thread (works in frozen exes).
         self.worker = DAQWorker(cfg)
-        self.worker_thread = QThread()
-        self.worker.moveToThread(self.worker_thread)
-        self.worker_thread.started.connect(self.worker.run)
-        self.worker.started.connect(self._on_started)
-        self.worker.finished.connect(self._on_finished)
-        self.worker.error.connect(self._on_error)
+        self.worker.generation_started.connect(self._on_started)
+        self.worker.generation_finished.connect(self._on_finished)
+        self.worker.generation_error.connect(self._on_error)
 
         self.worker_params = cfg.status_snapshot()
         self.experiment_start_time = datetime.now()
-        self.statusBar().showMessage(f"Running on {cfg.channel_path()}")
-        self.worker_thread.start()
+        self.statusBar().showMessage(f"Starting on {cfg.channel_path()}…")
+        self.worker.start()
 
     def stop_generation(self):
-        if self.worker:
-            self.worker.stop()
+        if self.worker is None:
+            return
+        self.statusBar().showMessage("Stopping…")
+        self.worker.stop()
 
     def _on_started(self):
+        self.statusBar().showMessage("Running")
         self.state_start_time = time.time()
         self.state_timer = QTimer(self)
         self.state_timer.timeout.connect(self._tick_status)
@@ -393,6 +395,9 @@ class TriggerGeneratorWindow(QMainWindow):
         )
 
     def _on_finished(self):
+        if not getattr(self, "_session_active", False):
+            return
+        self._session_active = False
         if self.state_timer:
             self.state_timer.stop()
             self.state_timer = None
@@ -412,18 +417,17 @@ class TriggerGeneratorWindow(QMainWindow):
                 pass
         self.state_start_time = None
         self._set_status_ready()
-        if self.worker_thread:
-            self.worker_thread.quit()
-            self.worker_thread.wait(2000)
-            self.worker_thread = None
+        worker = self.worker
         self.worker = None
+        if worker is not None:
+            worker.wait(5000)
         self.start_btn.setEnabled(DAQ_AVAILABLE)
         self.stop_btn.setEnabled(False)
         self._set_controls_enabled(True)
         self.statusBar().showMessage("Idle")
 
     def _on_error(self, msg: str):
-        self._on_finished()
+        # Child exits next and emits generation_finished (UI unlock).
         QMessageBox.critical(self, "Error", msg)
 
     def load_params(self, silent: bool = False):
