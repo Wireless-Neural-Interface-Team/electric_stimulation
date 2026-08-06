@@ -15,21 +15,8 @@ import subprocess
 import sys
 from pathlib import Path
 import tempfile
-import importlib
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-
-
-def _can_import_pydaqmx():
-    """
-    Return True only if PyDAQmx can be imported in current environment.
-    NI-DAQmx runtime is a system dependency and may be missing on build machines.
-    """
-    try:
-        importlib.import_module("PyDAQmx")
-        return True
-    except Exception:
-        return False
 
 
 def main():
@@ -61,14 +48,11 @@ def main():
             "--hidden-import=PyQt5.QtGui",
             "--hidden-import=PyQt5.QtWidgets",
             "--hidden-import=numpy",
+            "--hidden-import=PyDAQmx",
             str(launcher.resolve()),
         ]
-        if _can_import_pydaqmx():
-            cmd.append("--hidden-import=PyDAQmx")
-        else:
-            print("WARNING: PyDAQmx/NI-DAQmx not available during build; DAQ will be unavailable at runtime.")
         subprocess.run(cmd, check=True, cwd=Path.cwd())
-    print(f"\nExecutable created: {exe_path}")
+    print(f"\n✓ Executable created: {exe_path}")
 
 
 if __name__ == "__main__":
